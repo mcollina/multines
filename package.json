@@ -1,0 +1,42 @@
+{
+  "name": "multines",
+  "version": "0.0.1",
+  "description": "Multi-process nes backend, turn nes into a fully scalable solution",
+  "main": "multines.js",
+  "scripts": {
+    "test": "standard && lab test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcollina/multines.git"
+  },
+  "keywords": [
+    "hapi",
+    "nes",
+    "websocket",
+    "redis",
+    "mongodb",
+    "pub",
+    "sub",
+    "scalable"
+  ],
+  "author": "Matteo Collina <hello@matteocollina.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mcollina/multines/issues"
+  },
+  "homepage": "https://github.com/mcollina/multines#readme",
+  "devDependencies": {
+    "code": "^2.2.0",
+    "hapi": "^13.3.0",
+    "lab": "^10.3.1",
+    "nes": "^4.3.0",
+    "pre-commit": "^1.1.2",
+    "standard": "^6.0.8"
+  },
+  "dependencies": {
+    "mqemitter": "^1.0.0",
+    "mqemitter-mongodb": "^1.1.0",
+    "mqemitter-redis": "^1.0.1"
+  }
+}

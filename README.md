@@ -1,4 +1,4 @@
-# multines
+# multines&nbsp;&nbsp;[![Build Status](https://travis-ci.org/mcollina/multines.svg)](https://travis-ci.org/mcollina/multines)
 
 Multi-process [nes][nes] backend, turn [nes][nes] into a fully scalable solution.
 

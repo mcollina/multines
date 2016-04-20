@@ -64,7 +64,7 @@ function pubSubTest () {
 
       client.subscribe('/echo', (message) => {
         expect(message).to.deep.equal({ hello: 'world' })
-        done()
+        setImmediate(done)
       }, (err) => {
         if (err) {
           return done(err)
@@ -100,7 +100,7 @@ function scalablePubSubTest () {
 
         client1.subscribe('/echo', (message) => {
           expect(message).to.deep.equal({ hello: 'world' })
-          done()
+          setImmediate(done)
         }, (err) => {
           if (err) {
             return done(err)
@@ -168,6 +168,72 @@ experiment('with shared mqemitter', () => {
         }
         mq.close(done)
       })
+      server2 = null
+    })
+    server1 = null
+  })
+
+  pubSubTest()
+  scalablePubSubTest()
+})
+
+experiment('with two redis mqemitter', () => {
+  let server1
+  let server2
+
+  beforeEach((done) => {
+    server1 = start(getServer(), {
+      type: 'redis'
+    }, function (err) {
+      if (err) {
+        return done(err)
+      }
+
+      server2 = start(getServer(3001), {
+        type: 'redis'
+      }, done)
+    })
+  })
+
+  afterEach((done) => {
+    server1.stop((err) => {
+      if (err) {
+        return done(err)
+      }
+      server2.stop(done)
+      server2 = null
+    })
+    server1 = null
+  })
+
+  pubSubTest()
+  scalablePubSubTest()
+})
+
+experiment('with two mongodb mqemitter', () => {
+  let server1
+  let server2
+
+  beforeEach((done) => {
+    server1 = start(getServer(), {
+      type: 'redis'
+    }, function (err) {
+      if (err) {
+        return done(err)
+      }
+
+      server2 = start(getServer(3001), {
+        type: 'redis'
+      }, done)
+    })
+  })
+
+  afterEach((done) => {
+    server1.stop((err) => {
+      if (err) {
+        return done(err)
+      }
+      server2.stop(done)
       server2 = null
     })
     server1 = null

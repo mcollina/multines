@@ -1,13 +1,25 @@
 'use strict'
 
 const mqemitter = require('mqemitter')
+const redis = require('mqemitter-redis')
+const mongodb = require('mqemitter-mongodb')
 
 function register (server, options, next) {
   server.dependency('nes')
 
-  options.mq = options.mq || mqemitter()
+  let mq
 
-  const mq = options.mq
+  switch (options.type) {
+    case 'redis':
+      mq = redis(options)
+      break
+    case 'mongo':
+    case 'mongodb':
+      mq = mongodb(options)
+      break
+    default:
+      mq = options.mq || mqemitter(options)
+  }
 
   server.decorate('server', 'subscriptionFar', (path, options) => {
     options = options || {}
@@ -35,6 +47,10 @@ function register (server, options, next) {
       topic: path,
       body: message
     })
+  })
+
+  server.ext('onPostStop', function (event, done) {
+    mq.close(done)
   })
 
   next()

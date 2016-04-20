@@ -55,5 +55,5 @@ MIT
 [redis]: http://redis.io
 [redis]: http://www.mongodb.org
 [mqemitter]: https://github.com/mcollina/mqmitter
-[mqredis]: https://github.com/mcollina/mqmitter-redis
-[mqmongo]: https://github.com/mcollina/mqmitter-mongodb
+[mqredis]: https://github.com/mcollina/mqemitter-redis
+[mqmongo]: https://github.com/mcollina/mqemitter-mongodb

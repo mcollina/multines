@@ -32,6 +32,17 @@ The `options` object is passed through to
 [MQEmitterRedis][mqredis] and [MQEmitterMongodb][mqmongo], check their
 documentation for broker-specific config.
 
+### server.subscriptionFar(path, options)
+
+Wrap nes [`server.subscription(path, options)`](https://github.com/hapijs/nes/blob/master/API.md#serversubscriptionpath-options) adding the ability to receive messages from the MQEmitter-based broker.
+
+The subscription supported is slightly different from nes, as it allows
+[wildcards](https://github.com/mcollina/mqemitter#wildcards).
+
+### server.publishFar(path, message)
+
+Publish a message to the MQEmitter-based broker.
+
 ## Acknowledgements
 
 This project was kindly sponsored by [nearForm](http://nearform.com).

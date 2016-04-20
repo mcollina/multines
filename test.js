@@ -82,6 +82,83 @@ function pubSubTest () {
       })
     })
   })
+
+  test('sub/unsub/pub', (done) => {
+    const client = new Nes.Client('ws://localhost:3000')
+
+    client.connect((err) => {
+      if (err) {
+        return done(err)
+      }
+
+      client.subscribe('/echo', (message) => {
+        done(new Error('this should never happen'))
+      }, (err) => {
+        if (err) {
+          return done(err)
+        }
+
+        client.unsubscribe('/echo')
+
+        setImmediate(() => {
+          if (err) {
+            return done(err)
+          }
+
+          client.request({
+            path: '/echo',
+            method: 'POST',
+            payload: { hello: 'world' }
+          }, done)
+        })
+      })
+    })
+  })
+
+  test('sub/disconnect/sub/pub', (done) => {
+    let client = new Nes.Client('ws://localhost:3000')
+
+    client.connect((err) => {
+      if (err) {
+        return done(err)
+      }
+
+      client.subscribe('/echo', (message) => {}, (err) => {
+        if (err) {
+          return done(err)
+        }
+
+        client.disconnect()
+
+        client = new Nes.Client('ws://localhost:3000')
+
+        client.connect((err) => {
+          if (err) {
+            return done(err)
+          }
+
+          client.subscribe('/echo', (message) => {
+            expect(message).to.deep.equal({ hello: 'world' })
+            setImmediate(done)
+          }, (err) => {
+            if (err) {
+              return done(err)
+            }
+
+            client.request({
+              path: '/echo',
+              method: 'POST',
+              payload: { hello: 'world' }
+            }, (err) => {
+              if (err) {
+                return done(err)
+              }
+            })
+          })
+        })
+      })
+    })
+  })
 }
 
 function scalablePubSubTest () {

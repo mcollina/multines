@@ -21,20 +21,42 @@ function register (server, options, next) {
       mq = options.mq || mqemitter(options)
   }
 
+  function buildDeliver (socket) {
+    return function deliver (message, done) {
+      socket.publish(message.topic, message.body, done)
+    }
+  }
+
   server.decorate('server', 'subscriptionFar', (path, options) => {
     options = options || {}
 
-    const toWrap = options.onSubscribe || ((socket, path, params, next) => next())
+    const wrapSubscribe = options.onSubscribe || ((socket, path, params, next) => next())
+    const wrapUnsubscribe = options.onUnubscribe || ((socket, path, params) => {})
 
     options.onSubscribe = (socket, path, params, next) => {
-      toWrap(socket, path, params, (err) => {
+      let deliver = socket.__deliver
+
+      if (!deliver) {
+        deliver = socket.__deliver = buildDeliver(socket)
+      }
+
+      wrapSubscribe(socket, path, params, (err) => {
         if (err) {
           return next(err)
         }
-        mq.on(path, function (message, done) {
-          socket.publish(message.topic, message.body, done)
-        }, next)
+
+        mq.on(path, deliver, next)
       })
+    }
+
+    options.onUnsubscribe = (socket, path, params) => {
+      wrapUnsubscribe(socket, path, params)
+
+      if (!socket.__deliver) {
+        return
+      }
+
+      mq.removeListener(path, socket.__deliver)
     }
 
     server.subscription(path, options)

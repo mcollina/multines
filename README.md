@@ -12,7 +12,7 @@ through an external pub/sub broker, currently only [redis][redis] and
 ## Install
 
 ```
-npm i hapi-pino --save
+npm i multines --save
 ```
 
 ## Example

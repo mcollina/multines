@@ -54,6 +54,6 @@ MIT
 [nes]: http://npm.im/nes
 [redis]: http://redis.io
 [redis]: http://www.mongodb.org
-[mqemitter]: https://github.com/mcollina/mqmitter
+[mqemitter]: https://github.com/mcollina/mqemitter
 [mqredis]: https://github.com/mcollina/mqemitter-redis
 [mqmongo]: https://github.com/mcollina/mqemitter-mongodb

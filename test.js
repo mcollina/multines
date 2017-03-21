@@ -15,7 +15,7 @@ const afterEach = lab.afterEach
 const expect = Code.expect
 
 function getServer (port) {
-  port = port || 3000
+  port = port || 4000
   const server = new Hapi.Server()
   server.connection({ port: port })
   return server
@@ -55,7 +55,7 @@ function start (server, opts, cb) {
 
 function pubSubTest () {
   test('pub/sub', (done) => {
-    const client = new Nes.Client('ws://localhost:3000')
+    const client = new Nes.Client('ws://localhost:4000')
 
     client.connect((err) => {
       if (err) {
@@ -63,8 +63,8 @@ function pubSubTest () {
       }
 
       client.subscribe('/echo', (message) => {
-        expect(message).to.deep.equal({ hello: 'world' })
-        setImmediate(done)
+        expect(message).to.equal({ hello: 'world' })
+        client.disconnect(() => setImmediate(done))
       }, (err) => {
         if (err) {
           return done(err)
@@ -84,23 +84,23 @@ function pubSubTest () {
   })
 
   test('sub/unsub/pub', (done) => {
-    const client = new Nes.Client('ws://localhost:3000')
+    const client = new Nes.Client('ws://localhost:4000')
 
     client.connect((err) => {
       if (err) {
         return done(err)
       }
 
-      client.subscribe('/echo', (message) => {
+      const handler = (message) => {
         done(new Error('this should never happen'))
-      }, (err) => {
+      }
+
+      client.subscribe('/echo', handler, (err) => {
         if (err) {
           return done(err)
         }
 
-        client.unsubscribe('/echo')
-
-        setImmediate(() => {
+        client.unsubscribe('/echo', handler, (err) => {
           if (err) {
             return done(err)
           }
@@ -109,14 +109,20 @@ function pubSubTest () {
             path: '/echo',
             method: 'POST',
             payload: { hello: 'world' }
-          }, done)
+          }, (err) => {
+            if (err) {
+              return done(err)
+            }
+
+            client.disconnect(() => setImmediate(done))
+          })
         })
       })
     })
   })
 
   test('sub/disconnect/sub/pub', (done) => {
-    let client = new Nes.Client('ws://localhost:3000')
+    let client = new Nes.Client('ws://localhost:4000')
 
     client.connect((err) => {
       if (err) {
@@ -130,7 +136,7 @@ function pubSubTest () {
 
         client.disconnect()
 
-        client = new Nes.Client('ws://localhost:3000')
+        client = new Nes.Client('ws://localhost:4000')
 
         client.connect((err) => {
           if (err) {
@@ -138,8 +144,8 @@ function pubSubTest () {
           }
 
           client.subscribe('/echo', (message) => {
-            expect(message).to.deep.equal({ hello: 'world' })
-            setImmediate(done)
+            expect(message).to.equal({ hello: 'world' })
+            client.disconnect(() => setImmediate(done))
           }, (err) => {
             if (err) {
               return done(err)
@@ -163,21 +169,22 @@ function pubSubTest () {
 
 function scalablePubSubTest () {
   test('scalable pub/sub', (done) => {
-    const client1 = new Nes.Client('ws://localhost:3000')
-    const client2 = new Nes.Client('ws://localhost:3001')
+    const client1 = new Nes.Client('ws://localhost:4000')
+    const client2 = new Nes.Client('ws://localhost:4001')
 
     client1.connect((err) => {
       if (err) {
         return done(err)
       }
+
       client2.connect((err) => {
         if (err) {
           return done(err)
         }
 
         client1.subscribe('/echo', (message) => {
-          expect(message).to.deep.equal({ hello: 'world' })
-          setImmediate(done)
+          expect(message).to.equal({ hello: 'world' })
+          client1.disconnect(() => done())
         }, (err) => {
           if (err) {
             return done(err)
@@ -191,6 +198,8 @@ function scalablePubSubTest () {
             if (err) {
               return done(err)
             }
+
+            client2.disconnect()
           })
         })
       })
@@ -228,7 +237,7 @@ experiment('with shared mqemitter', () => {
         return done(err)
       }
 
-      server2 = start(getServer(3001), {
+      server2 = start(getServer(4001), {
         mq: mq
       }, done)
     })
@@ -266,7 +275,7 @@ experiment('with two redis mqemitter', () => {
         return done(err)
       }
 
-      server2 = start(getServer(3001), {
+      server2 = start(getServer(4001), {
         type: 'redis'
       }, done)
     })
@@ -299,7 +308,7 @@ experiment('with two mongodb mqemitter', () => {
         return done(err)
       }
 
-      server2 = start(getServer(3001), {
+      server2 = start(getServer(4001), {
         type: 'redis'
       }, done)
     })

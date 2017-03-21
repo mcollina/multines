@@ -31,7 +31,7 @@ function register (server, options, next) {
     options = options || {}
 
     const wrapSubscribe = options.onSubscribe || ((socket, path, params, next) => next())
-    const wrapUnsubscribe = options.onUnubscribe || ((socket, path, params) => {})
+    const wrapUnsubscribe = options.onUnubscribe || ((socket, path, params, next) => next())
 
     options.onSubscribe = (socket, path, params, next) => {
       let deliver = socket.__deliver
@@ -49,14 +49,21 @@ function register (server, options, next) {
       })
     }
 
-    options.onUnsubscribe = (socket, path, params) => {
-      wrapUnsubscribe(socket, path, params)
+    options.onUnsubscribe = (socket, path, params, next) => {
+      wrapUnsubscribe(socket, path, params, (err) => {
+        if (err) {
+          return next(err)
+        }
 
-      if (!socket.__deliver) {
-        return
-      }
+        if (!socket.__deliver) {
+          next()
+          return
+        }
 
-      mq.removeListener(path, socket.__deliver)
+        mq.removeListener(path, socket.__deliver, function () {
+          setImmediate(next)
+        })
+      })
     }
 
     server.subscription(path, options)
@@ -71,8 +78,13 @@ function register (server, options, next) {
     })
   })
 
-  server.ext('onPostStop', function (event, done) {
-    mq.close(done)
+  server.ext({
+    type: 'onPostStop',
+    method: function (event, done) {
+      mq.close(function () {
+        setImmediate(done)
+      })
+    }
   })
 
   next()

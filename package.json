@@ -27,16 +27,16 @@
   },
   "homepage": "https://github.com/mcollina/multines#readme",
   "devDependencies": {
-    "code": "^2.2.0",
-    "hapi": "^13.3.0",
-    "lab": "^10.3.1",
-    "nes": "^4.3.0",
+    "code": "^4.0.0",
+    "hapi": "^16.1.0",
+    "lab": "^13.0.1",
+    "nes": "^6.4.2",
     "pre-commit": "^1.1.2",
-    "standard": "^6.0.8"
+    "standard": "^9.0.2"
   },
   "dependencies": {
-    "mqemitter": "^1.0.0",
-    "mqemitter-mongodb": "^1.1.0",
-    "mqemitter-redis": "^1.0.1"
+    "mqemitter": "^2.0.0",
+    "mqemitter-mongodb": "^3.0.2",
+    "mqemitter-redis": "^2.0.0"
   }
 }

@@ -52,8 +52,9 @@ This project was kindly sponsored by [nearForm](http://nearform.com).
 MIT
 
 [nes]: http://npm.im/nes
+[hapi]: http://npm.im/hapi
 [redis]: http://redis.io
-[redis]: http://www.mongodb.org
-[mqemitter]: https://github.com/mcollina/mqemitter
+[mongodb]: http://www.mongodb.org
+[mqemitter]: https://github.com/mcollina/mqmitter
 [mqredis]: https://github.com/mcollina/mqemitter-redis
 [mqmongo]: https://github.com/mcollina/mqemitter-mongodb

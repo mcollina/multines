@@ -261,6 +261,40 @@ experiment('with shared mqemitter', () => {
 
   pubSubTest()
   scalablePubSubTest()
+
+  test('remove the / at the beginning', (done) => {
+    const client = new Nes.Client('ws://localhost:4000')
+
+    client.connect((err) => {
+      if (err) {
+        return done(err)
+      }
+
+      const handler = (message, cb) => {
+        expect(message.body).to.equal({ hello: 'world' })
+        mq.removeListener('echo', handler)
+        cb()
+      }
+
+      mq.on('echo', handler, (err) => {
+        if (err) {
+          return done(err)
+        }
+
+        client.request({
+          path: '/echo',
+          method: 'POST',
+          payload: { hello: 'world' }
+        }, (err) => {
+          if (err) {
+            return done(err)
+          }
+
+          client.disconnect(() => setImmediate(done))
+        })
+      })
+    })
+  })
 })
 
 experiment('with two redis mqemitter', () => {

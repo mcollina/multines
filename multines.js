@@ -23,7 +23,7 @@ function register (server, options, next) {
 
   function buildDeliver (socket) {
     return function deliver (message, done) {
-      socket.publish(message.topic, message.body, done)
+      socket.publish('/' + message.topic, message.body, done)
     }
   }
 
@@ -45,7 +45,7 @@ function register (server, options, next) {
           return next(err)
         }
 
-        mq.on(path, deliver, next)
+        mq.on(path.slice(1), deliver, next)
       })
     }
 
@@ -60,7 +60,7 @@ function register (server, options, next) {
           return
         }
 
-        mq.removeListener(path, socket.__deliver, function () {
+        mq.removeListener(path.slice(1), socket.__deliver, function () {
           setImmediate(next)
         })
       })
@@ -73,7 +73,7 @@ function register (server, options, next) {
     options = options || {}
 
     mq.emit({
-      topic: path,
+      topic: path.slice(1), // the first is always a '/'
       body: message
     })
   })

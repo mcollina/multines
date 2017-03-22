@@ -4,6 +4,8 @@ const mqemitter = require('mqemitter')
 const redis = require('mqemitter-redis')
 const mongodb = require('mqemitter-mongodb')
 
+const kDeliver = Symbol.for('deliver')
+
 function register (server, options, next) {
   server.dependency('nes')
 
@@ -21,9 +23,13 @@ function register (server, options, next) {
       mq = options.mq || mqemitter(options)
   }
 
-  function buildDeliver (socket) {
+  function buildDeliver (socket, topic) {
     return function deliver (message, done) {
-      socket.publish('/' + message.topic, message.body, done)
+      if (topic === message.topic) {
+        socket.publish('/' + topic, message.body, done)
+      } else {
+        socket.publish('/' + topic, message, done)
+      }
     }
   }
 
@@ -34,10 +40,13 @@ function register (server, options, next) {
     const wrapUnsubscribe = options.onUnubscribe || ((socket, path, params, next) => next())
 
     options.onSubscribe = (socket, path, params, next) => {
-      let deliver = socket.__deliver
+      const deliverMap = socket[kDeliver] || {}
+      socket[kDeliver] = deliverMap
 
-      if (!deliver) {
-        deliver = socket.__deliver = buildDeliver(socket)
+      const topic = path.replace(/^\//, '')
+
+      if (!deliverMap[path]) {
+        deliverMap[path] = buildDeliver(socket, topic)
       }
 
       wrapSubscribe(socket, path, params, (err) => {
@@ -45,7 +54,7 @@ function register (server, options, next) {
           return next(err)
         }
 
-        mq.on(path.slice(1), deliver, next)
+        mq.on(topic, deliverMap[path], next)
       })
     }
 
@@ -55,12 +64,15 @@ function register (server, options, next) {
           return next(err)
         }
 
-        if (!socket.__deliver) {
+        const deliverMap = socket[kDeliver] || {}
+        socket[kDeliver] = deliverMap
+
+        if (!deliverMap[path]) {
           next()
           return
         }
 
-        mq.removeListener(path.slice(1), socket.__deliver, function () {
+        mq.removeListener(path.replace(/^\//, ''), deliverMap[path], function () {
           setImmediate(next)
         })
       })
@@ -69,12 +81,12 @@ function register (server, options, next) {
     server.subscription(path, options)
   })
 
-  server.decorate('server', 'publishFar', (path, message) => {
+  server.decorate('server', 'publishFar', (path, body) => {
     options = options || {}
 
     mq.emit({
-      topic: path.slice(1), // the first is always a '/'
-      body: message
+      topic: path.replace(/^\//, ''), // the first is always a '/'
+      body
     })
   })
 

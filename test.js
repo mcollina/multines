@@ -362,3 +362,98 @@ experiment('with two mongodb mqemitter', () => {
   pubSubTest()
   scalablePubSubTest()
 })
+
+experiment('wildcards', () => {
+  let server
+
+  beforeEach((done) => {
+    server = getServer()
+
+    const plugin = {
+      register: Multines.register
+    }
+
+    server.register([Nes, plugin], (err) => {
+      if (err) {
+        return done(err)
+      }
+
+      server.subscriptionFar('/{parts*}')
+      server.route({
+        path: '/publish',
+        method: 'POST',
+        handler: (req, reply) => {
+          const topic = req.payload.topic
+          const body = req.payload.body
+          server.publishFar(topic, body)
+          reply()
+        }
+      })
+
+      server.start(done)
+    })
+  })
+
+  afterEach((done) => {
+    server.stop(done)
+    server = null
+  })
+
+  test('a + wildcard work', (done) => {
+    const client = new Nes.Client('ws://localhost:4000')
+
+    client.connect((err) => {
+      if (err) {
+        return done(err)
+      }
+
+      client.subscribe('/+', (message) => {
+        expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
+        client.disconnect(() => setImmediate(done))
+      }, (err) => {
+        if (err) {
+          return done(err)
+        }
+
+        client.request({
+          path: '/publish',
+          method: 'POST',
+          payload: { topic: 'hello', body: { hello: 'world' } }
+        }, (err) => {
+          if (err) {
+            return done(err)
+          }
+        })
+      })
+    })
+  })
+
+  test('a # wildcard work', (done) => {
+    const client = new Nes.Client('ws://localhost:4000')
+
+    client.connect((err) => {
+      if (err) {
+        return done(err)
+      }
+
+      client.subscribe('/#', (message) => {
+        expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
+        client.disconnect(() => setImmediate(done))
+      }, (err) => {
+        if (err) {
+          return done(err)
+        }
+
+        client.request({
+          path: '/publish',
+          method: 'POST',
+          payload: { topic: 'hello/new/world', body: { hello: 'world' } }
+        }, (err) => {
+          if (err) {
+            return done(err)
+          }
+        })
+      })
+    })
+  })
+})

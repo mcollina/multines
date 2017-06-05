@@ -37,7 +37,7 @@ function register (server, options, next) {
     options = options || {}
 
     const wrapSubscribe = options.onSubscribe || ((socket, path, params, next) => next())
-    const wrapUnsubscribe = options.onUnubscribe || ((socket, path, params, next) => next())
+    const wrapUnsubscribe = options.onUnsubscribe || ((socket, path, params, next) => next())
 
     options.onSubscribe = (socket, path, params, next) => {
       const deliverMap = socket[kDeliver] || {}

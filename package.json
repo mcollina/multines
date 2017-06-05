@@ -1,6 +1,6 @@
 {
   "name": "multines",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Multi-process nes backend, turn nes into a fully scalable solution",
   "main": "multines.js",
   "scripts": {

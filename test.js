@@ -64,7 +64,10 @@ function pubSubTest () {
 
       client.subscribe('/echo', (message) => {
         expect(message).to.equal({ hello: 'world' })
-        client.disconnect(() => setImmediate(done))
+        setTimeout(function () {
+          client.disconnect()
+          done()
+        }, 100)
       }, (err) => {
         if (err) {
           return done(err)
@@ -145,7 +148,10 @@ function pubSubTest () {
 
           client.subscribe('/echo', (message) => {
             expect(message).to.equal({ hello: 'world' })
-            client.disconnect(() => setImmediate(done))
+            setTimeout(function () {
+              client.disconnect()
+              done()
+            }, 100)
           }, (err) => {
             if (err) {
               return done(err)
@@ -409,7 +415,10 @@ experiment('wildcards', () => {
 
       client.subscribe('/+', (message) => {
         expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
-        client.disconnect(() => setImmediate(done))
+        setTimeout(() => {
+          client.disconnect()
+          done()
+        }, 100)
       }, (err) => {
         if (err) {
           return done(err)
@@ -438,7 +447,10 @@ experiment('wildcards', () => {
 
       client.subscribe('/#', (message) => {
         expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
-        client.disconnect(() => setImmediate(done))
+        setTimeout(() => {
+          client.disconnect()
+          done()
+        }, 100)
       }, (err) => {
         if (err) {
           return done(err)

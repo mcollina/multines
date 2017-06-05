@@ -28,15 +28,15 @@
   "homepage": "https://github.com/mcollina/multines#readme",
   "devDependencies": {
     "code": "^4.0.0",
-    "hapi": "^16.1.0",
-    "lab": "^13.0.1",
+    "hapi": "^16.4.0",
+    "lab": "^13.1.0",
     "nes": "^6.4.2",
     "pre-commit": "^1.1.2",
-    "standard": "^9.0.2"
+    "standard": "^10.0.0"
   },
   "dependencies": {
     "mqemitter": "^2.0.0",
     "mqemitter-mongodb": "^3.0.2",
-    "mqemitter-redis": "^2.0.0"
+    "mqemitter-redis": "^2.1.0"
   }
 }

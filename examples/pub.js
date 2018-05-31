@@ -2,26 +2,18 @@
 
 const Nes = require('nes')
 
-const client = new Nes.Client('ws://localhost:3001')
+async function pub () {
+  const client = new Nes.Client('ws://localhost:3001')
+  await client.connect()
 
-client.connect((err) => {
-  if (err) {
-    console.error(err.message)
-    process.exit(1)
-  }
-
-  console.log('connected')
-
-  client.request({
+  console.log('pub connected')
+  await client.request({
     path: '/echo',
     method: 'POST',
     payload: { hello: 'world' }
-  }, (err) => {
-    if (err) {
-      console.error(err.message)
-      process.exit(1)
-    }
-
-    client.disconnect()
   })
-})
+
+  await client.disconnect()
+}
+
+pub()

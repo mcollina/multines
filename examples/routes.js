@@ -3,27 +3,29 @@
 const Nes = require('nes')
 const Multines = require('..')
 
-module.exports = (server) => {
+module.exports = async (server) => {
   const plugin = {
-    register: Multines.register,
+    plugin: {
+      name: 'multines',
+      register: Multines.register
+    },
     options: {
       type: 'redis'
     }
   }
 
-  server.register([Nes, plugin], (err) => {
-    if (err) {
-      throw err
-    }
-  })
+  await server.register([Nes, plugin])
 
   server.subscriptionFar('/echo')
   server.route({
     path: '/echo',
     method: 'POST',
-    handler: (req, reply) => {
+    handler: async (req, h) => {
       server.publishFar('/echo', req.payload)
-      reply(req.payload)
+
+      return req.payload
     }
   })
+
+  return server
 }

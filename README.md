@@ -9,6 +9,8 @@ through an external pub/sub broker, currently only [redis][redis] and
 **multines** is powered by [MQEmitter][mqemitter],
 [MQEmitterRedis][mqredis] and [MQEmitterMongodb][mqmongo].
 
+**Important note:** this library needs nodejs 8 or greater.
+
 ## Install
 
 ```

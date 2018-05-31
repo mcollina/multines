@@ -27,10 +27,10 @@
   },
   "homepage": "https://github.com/mcollina/multines#readme",
   "devDependencies": {
-    "code": "^4.0.0",
-    "hapi": "^16.4.0",
-    "lab": "^13.1.0",
-    "nes": "^6.4.2",
+    "code": "^5.2.0",
+    "hapi": "^17.5.0",
+    "lab": "^15.4.5",
+    "nes": "^8.1.0",
     "pre-commit": "^1.1.2",
     "standard": "^10.0.0"
   },

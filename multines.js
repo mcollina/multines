@@ -1,12 +1,23 @@
 'use strict'
 
+const util = require('util')
 const mqemitter = require('mqemitter')
 const redis = require('mqemitter-redis')
 const mongodb = require('mqemitter-mongodb')
 
 const kDeliver = Symbol.for('deliver')
 
-function register (server, options, next) {
+function buildDeliver (socket, topic) {
+  return async function deliver (message, done) {
+    if (topic === message.topic) {
+      await socket.publish('/' + topic, message.body)
+    } else {
+      await socket.publish('/' + topic, message)
+    }
+  }
+}
+
+async function register (server, options) {
   server.dependency('nes')
 
   let mq
@@ -19,27 +30,18 @@ function register (server, options, next) {
     case 'mongodb':
       mq = mongodb(options)
       break
-    default:
+    default: {
       mq = options.mq || mqemitter(options)
-  }
-
-  function buildDeliver (socket, topic) {
-    return function deliver (message, done) {
-      if (topic === message.topic) {
-        socket.publish('/' + topic, message.body, done)
-      } else {
-        socket.publish('/' + topic, message, done)
-      }
     }
   }
 
   server.decorate('server', 'subscriptionFar', (path, options) => {
     options = options || {}
 
-    const wrapSubscribe = options.onSubscribe || ((socket, path, params, next) => next())
-    const wrapUnsubscribe = options.onUnsubscribe || ((socket, path, params, next) => next())
+    const wrapSubscribe = options.onSubscribe || (async (socket, path, params) => null)
+    const wrapUnsubscribe = options.onUnsubscribe || (async (socket, path, params) => null)
 
-    options.onSubscribe = (socket, path, params, next) => {
+    options.onSubscribe = async (socket, path, params) => {
       const deliverMap = socket[kDeliver] || {}
       socket[kDeliver] = deliverMap
 
@@ -49,57 +51,38 @@ function register (server, options, next) {
         deliverMap[path] = buildDeliver(socket, topic)
       }
 
-      wrapSubscribe(socket, path, params, (err) => {
-        if (err) {
-          return next(err)
-        }
-
-        mq.on(topic, deliverMap[path], next)
-      })
+      await wrapSubscribe(socket, path, params)
+      await util.promisify(mq.on.bind(mq))(topic, deliverMap[path])
     }
 
-    options.onUnsubscribe = (socket, path, params, next) => {
-      wrapUnsubscribe(socket, path, params, (err) => {
-        if (err) {
-          return next(err)
-        }
+    options.onUnsubscribe = async (socket, path, params) => {
+      await wrapUnsubscribe(socket, path, params)
 
-        const deliverMap = socket[kDeliver] || {}
-        socket[kDeliver] = deliverMap
+      const deliverMap = socket[kDeliver] || {}
+      socket[kDeliver] = deliverMap
 
-        if (!deliverMap[path]) {
-          next()
-          return
-        }
+      if (!deliverMap[path]) {
+        return
+      }
 
-        mq.removeListener(path.replace(/^\//, ''), deliverMap[path], function () {
-          setImmediate(next)
-        })
-      })
+      await util.promisify(mq.removeListener.bind(mq))(path.replace(/^\//, ''), deliverMap[path])
     }
 
     server.subscription(path, options)
   })
 
-  server.decorate('server', 'publishFar', (path, body) => {
+  server.decorate('server', 'publishFar', async (path, body) => {
     options = options || {}
 
-    mq.emit({
+    await util.promisify(mq.emit.bind(mq))({
       topic: path.replace(/^\//, ''), // the first is always a '/'
       body
     })
   })
 
-  server.ext({
-    type: 'onPostStop',
-    method: function (event, done) {
-      mq.close(function () {
-        setImmediate(done)
-      })
-    }
+  server.ext('onPostStop', async () => {
+    await util.promisify(mq.close.bind(mq))()
   })
-
-  next()
 }
 
 module.exports.register = register

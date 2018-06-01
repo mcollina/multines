@@ -17,9 +17,7 @@ function buildDeliver (socket, topic) {
   }
 }
 
-async function register (server, options) {
-  server.dependency('nes')
-
+function getMq (options) {
   let mq
 
   switch (options.type) {
@@ -34,6 +32,18 @@ async function register (server, options) {
       mq = options.mq || mqemitter(options)
     }
   }
+
+  return {
+    removeListener: util.promisify(mq.removeListener.bind(mq)),
+    on: util.promisify(mq.on.bind(mq)),
+    emit: util.promisify(mq.emit.bind(mq)),
+    close: util.promisify(mq.close.bind(mq))
+  }
+}
+
+async function register (server, options) {
+  server.dependency('nes')
+  const mq = getMq(options)
 
   server.decorate('server', 'subscriptionFar', (path, options) => {
     options = options || {}
@@ -52,7 +62,7 @@ async function register (server, options) {
       }
 
       await wrapSubscribe(socket, path, params)
-      await util.promisify(mq.on.bind(mq))(topic, deliverMap[path])
+      await mq.on(topic, deliverMap[path])
     }
 
     options.onUnsubscribe = async (socket, path, params) => {
@@ -65,7 +75,7 @@ async function register (server, options) {
         return
       }
 
-      await util.promisify(mq.removeListener.bind(mq))(path.replace(/^\//, ''), deliverMap[path])
+      await mq.removeListener(path.replace(/^\//, ''), deliverMap[path])
     }
 
     server.subscription(path, options)
@@ -74,14 +84,14 @@ async function register (server, options) {
   server.decorate('server', 'publishFar', async (path, body) => {
     options = options || {}
 
-    await util.promisify(mq.emit.bind(mq))({
+    await mq.emit({
       topic: path.replace(/^\//, ''), // the first is always a '/'
       body
     })
   })
 
   server.ext('onPostStop', async () => {
-    await util.promisify(mq.close.bind(mq))()
+    await mq.close()
   })
 }
 

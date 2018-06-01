@@ -59,7 +59,7 @@ function pubSubTest () {
       function handler (message, flags) {
         expect(message).to.equal({ hello: 'world' })
 
-        client.disconnect().then(resolve)
+        client.disconnect().then(resolve).catch(reject)
       }
 
       return client.subscribe('/echo', handler)
@@ -95,30 +95,36 @@ function pubSubTest () {
 
   test('sub/disconnect/sub/pub', async () => {
     let client = new Nes.Client('ws://localhost:4000')
-    await client.connect()
+    let done
+    let error
 
+    await client.connect()
     await client.subscribe('/echo', (message) => {})
     await client.disconnect()
 
     client = new Nes.Client('ws://localhost:4000')
     await client.connect()
 
-    await new Promise((resolve, reject) => {
-      function handler (message, flags) {
-        expect(message).to.equal({ hello: 'world' })
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-        client.disconnect().then(resolve)
-      }
+      client.disconnect().then(done).catch(error)
+    }
 
-      return client.subscribe('/echo', handler)
-        .then(() => {
-          return client.request({
-            path: '/echo',
-            method: 'POST',
-            payload: { hello: 'world' }
-          })
-        })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client.subscribe('/echo', handler)
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 }
 
@@ -133,7 +139,7 @@ function scalablePubSubTest () {
     await new Promise((resolve, reject) => {
       function handler (message, flags) {
         expect(message).to.equal({ hello: 'world' })
-        client1.disconnect().then(resolve)
+        client1.disconnect().then(resolve).catch(reject)
       }
 
       return client1.subscribe('/echo', handler)
@@ -303,7 +309,7 @@ experiment('wildcards', () => {
     await new Promise((resolve, reject) => {
       client.subscribe('/+', (message) => {
         expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
-        client.disconnect().then(resolve)
+        client.disconnect().then(resolve).catch(reject)
       })
 
       return client.request({
@@ -321,7 +327,7 @@ experiment('wildcards', () => {
     await new Promise((resolve, reject) => {
       client.subscribe('/#', (message) => {
         expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
-        client.disconnect().then(resolve)
+        client.disconnect().then(resolve).catch(reject)
       })
 
       return client.request({

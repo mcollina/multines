@@ -52,25 +52,32 @@ async function start (server, opts) {
 
 function pubSubTest () {
   test('pub/sub', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
     await client.connect()
 
-    await new Promise((resolve, reject) => {
-      function handler (message, flags) {
-        expect(message).to.equal({ hello: 'world' })
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-        client.disconnect().then(resolve).catch(reject)
-      }
+      client.disconnect().then(done).catch(error)
+    }
 
-      return client.subscribe('/echo', handler)
-        .then(() => {
-          return client.request({
-            path: '/echo',
-            method: 'POST',
-            payload: { hello: 'world' }
-          })
-        })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client.subscribe('/echo', handler)
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 
   test('sub/unsub/pub', async () => {
@@ -130,30 +137,36 @@ function pubSubTest () {
 
 function scalablePubSubTest () {
   test('scalable pub/sub', async () => {
+    let done
+    let error
+
     const client1 = new Nes.Client('ws://localhost:4000')
     const client2 = new Nes.Client('ws://localhost:4001')
 
     await client1.connect()
     await client2.connect()
 
-    await new Promise((resolve, reject) => {
-      function handler (message, flags) {
-        expect(message).to.equal({ hello: 'world' })
-        client1.disconnect().then(resolve).catch(reject)
-      }
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-      return client1.subscribe('/echo', handler)
-        .then(() => {
-          return client2.request({
-            path: '/echo',
-            method: 'POST',
-            payload: { hello: 'world' }
-          })
-          .then(() => {
-            return client2.disconnect()
-          })
-        })
+      client1.disconnect().then(done).catch(error)
+    }
+
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client1.subscribe('/echo', handler)
+    await Promise.all([
+      client2.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
+    await client2.disconnect()
   })
 }
 
@@ -203,29 +216,34 @@ experiment('with shared mqemitter', () => {
   scalablePubSubTest()
 
   test('remove the / at the beginning', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
     await client.connect()
 
-    await new Promise((resolve, reject) => {
-      const allDone = () => resolve()
+    function handler (message, cb) {
+      expect(message.body).to.equal({ hello: 'world' })
+      mq.removeListener('echo', handler)
+      cb()
+      client.disconnect().then(done).catch(error)
+    }
 
-      const handler = (message, cb) => {
-        expect(message.body).to.equal({ hello: 'world' })
-        mq.removeListener('echo', handler)
-        cb()
-        allDone()
-      }
+    mq.on('echo', handler)
 
-      mq.on('echo', handler, (err) => {
-        if (err) reject(err)
-
-        client.request({
-          path: '/echo',
-          method: 'POST',
-          payload: { hello: 'world' }
-        }).then(() => client.disconnect())
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 })
 
@@ -303,38 +321,56 @@ experiment('wildcards', () => {
   })
 
   test('a + wildcard work', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
     await client.connect()
 
-    await new Promise((resolve, reject) => {
-      client.subscribe('/+', (message) => {
-        expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
-        client.disconnect().then(resolve).catch(reject)
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
+    })
 
-      return client.request({
+    await client.subscribe('/+', (message) => {
+      expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
+      client.disconnect().then(done).catch(error)
+    })
+
+    await Promise.all([
+      client.request({
         path: '/publish',
         method: 'POST',
         payload: { topic: 'hello', body: { hello: 'world' } }
-      })
-    })
+      }),
+      waitForHandler
+    ])
   })
 
   test('a # wildcard work', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
     await client.connect()
 
-    await new Promise((resolve, reject) => {
-      client.subscribe('/#', (message) => {
-        expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
-        client.disconnect().then(resolve).catch(reject)
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
+    })
 
-      return client.request({
+    await client.subscribe('/#', (message) => {
+      expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
+      client.disconnect().then(done).catch(error)
+    })
+
+    await Promise.all([
+      client.request({
         path: '/publish',
         method: 'POST',
         payload: { topic: 'hello/new/world', body: { hello: 'world' } }
-      })
-    })
+      }),
+      waitForHandler
+    ])
   })
 })

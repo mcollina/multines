@@ -16,212 +16,169 @@ const expect = Code.expect
 
 function getServer (port) {
   port = port || 4000
-  const server = new Hapi.Server()
-  server.connection({ port: port })
+  const server = new Hapi.Server({ port: port })
+
   return server
 }
 
-function start (server, opts, cb) {
-  if (typeof opts === 'function') {
-    cb = opts
-    opts = {}
-  }
+async function start (server, opts) {
+  opts = opts || {}
 
   const plugin = {
-    register: Multines.register,
+    plugin: {
+      name: 'multines',
+      register: Multines.register
+    },
     options: opts
   }
 
-  server.register([Nes, plugin], (err) => {
-    if (err) {
-      return cb(err)
-    }
-
-    server.start(cb)
-  })
+  await server.register([Nes, plugin])
 
   server.subscriptionFar('/echo')
   server.route({
     path: '/echo',
     method: 'POST',
-    handler: (req, reply) => {
+    handler: async (req, h) => {
       server.publishFar('/echo', req.payload)
-      reply(req.payload)
+
+      return req.payload
     }
   })
+
+  await server.start()
 
   return server
 }
 
 function pubSubTest () {
-  test('pub/sub', (done) => {
+  test('pub/sub', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
 
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-      client.subscribe('/echo', (message) => {
-        expect(message).to.equal({ hello: 'world' })
-        setTimeout(function () {
-          client.disconnect()
-          done()
-        }, 100)
-      }, (err) => {
-        if (err) {
-          return done(err)
-        }
+      client.disconnect().then(done).catch(error)
+    }
 
-        client.request({
-          path: '/echo',
-          method: 'POST',
-          payload: { hello: 'world' }
-        }, (err) => {
-          if (err) {
-            return done(err)
-          }
-        })
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client.subscribe('/echo', handler)
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 
-  test('sub/unsub/pub', (done) => {
+  test('sub/unsub/pub', async () => {
     const client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
 
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
+    const handler = (message) => {
+      throw new Error('this should never happen')
+    }
 
-      const handler = (message) => {
-        done(new Error('this should never happen'))
-      }
+    await client.subscribe('/echo', handler)
+    await client.unsubscribe('/echo', handler)
 
-      client.subscribe('/echo', handler, (err) => {
-        if (err) {
-          return done(err)
-        }
-
-        client.unsubscribe('/echo', handler, (err) => {
-          if (err) {
-            return done(err)
-          }
-
-          client.request({
-            path: '/echo',
-            method: 'POST',
-            payload: { hello: 'world' }
-          }, (err) => {
-            if (err) {
-              return done(err)
-            }
-
-            client.disconnect(() => setImmediate(done))
-          })
-        })
-      })
+    await client.request({
+      path: '/echo',
+      method: 'POST',
+      payload: { hello: 'world' }
     })
+
+    await client.disconnect()
   })
 
-  test('sub/disconnect/sub/pub', (done) => {
+  test('sub/disconnect/sub/pub', async () => {
     let client = new Nes.Client('ws://localhost:4000')
+    let done
+    let error
 
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
+    await client.connect()
+    await client.subscribe('/echo', (message) => {})
+    await client.disconnect()
 
-      client.subscribe('/echo', (message) => {}, (err) => {
-        if (err) {
-          return done(err)
-        }
+    client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
 
-        client.disconnect()
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-        client = new Nes.Client('ws://localhost:4000')
+      client.disconnect().then(done).catch(error)
+    }
 
-        client.connect((err) => {
-          if (err) {
-            return done(err)
-          }
-
-          client.subscribe('/echo', (message) => {
-            expect(message).to.equal({ hello: 'world' })
-            setTimeout(function () {
-              client.disconnect()
-              done()
-            }, 100)
-          }, (err) => {
-            if (err) {
-              return done(err)
-            }
-
-            client.request({
-              path: '/echo',
-              method: 'POST',
-              payload: { hello: 'world' }
-            }, (err) => {
-              if (err) {
-                return done(err)
-              }
-            })
-          })
-        })
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client.subscribe('/echo', handler)
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 }
 
 function scalablePubSubTest () {
-  test('scalable pub/sub', (done) => {
+  test('scalable pub/sub', async () => {
+    let done
+    let error
+
     const client1 = new Nes.Client('ws://localhost:4000')
     const client2 = new Nes.Client('ws://localhost:4001')
 
-    client1.connect((err) => {
-      if (err) {
-        return done(err)
-      }
+    await client1.connect()
+    await client2.connect()
 
-      client2.connect((err) => {
-        if (err) {
-          return done(err)
-        }
+    function handler (message, flags) {
+      expect(message).to.equal({ hello: 'world' })
 
-        client1.subscribe('/echo', (message) => {
-          expect(message).to.equal({ hello: 'world' })
-          client1.disconnect(() => done())
-        }, (err) => {
-          if (err) {
-            return done(err)
-          }
+      client1.disconnect().then(done).catch(error)
+    }
 
-          client2.request({
-            path: '/echo',
-            method: 'POST',
-            payload: { hello: 'world' }
-          }, (err) => {
-            if (err) {
-              return done(err)
-            }
-
-            client2.disconnect()
-          })
-        })
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await client1.subscribe('/echo', handler)
+    await Promise.all([
+      client2.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
+    await client2.disconnect()
   })
 }
 
-experiment('nes work as normal', () => {
+experiment('nes work as normal', async () => {
   let server
 
-  beforeEach((done) => {
-    server = start(getServer(), done)
+  beforeEach(async () => {
+    server = await start(getServer())
   })
 
-  afterEach((done) => {
-    server.stop(done)
+  afterEach(async () => {
+    await server.stop()
     server = null
   })
 
@@ -233,73 +190,60 @@ experiment('with shared mqemitter', () => {
   let server2
   let mq
 
-  beforeEach((done) => {
+  beforeEach(async () => {
     mq = mqemitter()
 
-    server1 = start(getServer(), {
-      mq: mq
-    }, function (err) {
-      if (err) {
-        return done(err)
-      }
-
-      server2 = start(getServer(4001), {
-        mq: mq
-      }, done)
-    })
+    server1 = await start(getServer(), { mq: mq })
+    server2 = await start(getServer(4001), { mq: mq })
   })
 
-  afterEach((done) => {
-    server1.stop((err) => {
-      if (err) {
-        return done(err)
-      }
-      server2.stop((err) => {
-        if (err) {
-          return done(err)
-        }
-        mq.close(done)
-      })
-      server2 = null
-    })
+  afterEach(async () => {
+    await server1.stop()
     server1 = null
+
+    await server2.stop()
+    server2 = null
+
+    await new Promise((resolve, reject) => {
+      mq.close((err) => {
+        if (err) return reject(err)
+        resolve()
+      })
+    })
   })
 
   pubSubTest()
   scalablePubSubTest()
 
-  test('remove the / at the beginning', (done) => {
+  test('remove the / at the beginning', async () => {
+    let done
+    let error
+
     const client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
 
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
+    function handler (message, cb) {
+      expect(message.body).to.equal({ hello: 'world' })
+      mq.removeListener('echo', handler)
+      cb()
+      client.disconnect().then(done).catch(error)
+    }
 
-      const handler = (message, cb) => {
-        expect(message.body).to.equal({ hello: 'world' })
-        mq.removeListener('echo', handler)
-        cb()
-      }
+    mq.on('echo', handler)
 
-      mq.on('echo', handler, (err) => {
-        if (err) {
-          return done(err)
-        }
-
-        client.request({
-          path: '/echo',
-          method: 'POST',
-          payload: { hello: 'world' }
-        }, (err) => {
-          if (err) {
-            return done(err)
-          }
-
-          client.disconnect(() => setImmediate(done))
-        })
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
+
+    await Promise.all([
+      client.request({
+        path: '/echo',
+        method: 'POST',
+        payload: { hello: 'world' }
+      }),
+      waitForHandler
+    ])
   })
 })
 
@@ -307,28 +251,15 @@ experiment('with two redis mqemitter', () => {
   let server1
   let server2
 
-  beforeEach((done) => {
-    server1 = start(getServer(), {
-      type: 'redis'
-    }, function (err) {
-      if (err) {
-        return done(err)
-      }
-
-      server2 = start(getServer(4001), {
-        type: 'redis'
-      }, done)
-    })
+  beforeEach(async () => {
+    server1 = await start(getServer(), { type: 'redis' })
+    server2 = await start(getServer(4001), { type: 'redis' })
   })
 
-  afterEach((done) => {
-    server1.stop((err) => {
-      if (err) {
-        return done(err)
-      }
-      server2.stop(done)
-      server2 = null
-    })
+  afterEach(async () => {
+    await server1.stop()
+    await server2.stop()
+    server2 = null
     server1 = null
   })
 
@@ -340,28 +271,15 @@ experiment('with two mongodb mqemitter', () => {
   let server1
   let server2
 
-  beforeEach((done) => {
-    server1 = start(getServer(), {
-      type: 'redis'
-    }, function (err) {
-      if (err) {
-        return done(err)
-      }
-
-      server2 = start(getServer(4001), {
-        type: 'redis'
-      }, done)
-    })
+  beforeEach(async () => {
+    server1 = await start(getServer(), { type: 'redis' })
+    server2 = await start(getServer(4001), { type: 'redis' })
   })
 
-  afterEach((done) => {
-    server1.stop((err) => {
-      if (err) {
-        return done(err)
-      }
-      server2.stop(done)
-      server2 = null
-    })
+  afterEach(async () => {
+    await server1.stop()
+    await server2.stop()
+    server2 = null
     server1 = null
   })
 
@@ -372,100 +290,87 @@ experiment('with two mongodb mqemitter', () => {
 experiment('wildcards', () => {
   let server
 
-  beforeEach((done) => {
+  beforeEach(async () => {
     server = getServer()
 
     const plugin = {
+      name: 'multines',
       register: Multines.register
     }
 
-    server.register([Nes, plugin], (err) => {
-      if (err) {
-        return done(err)
-      }
+    await server.register([Nes, plugin])
 
-      server.subscriptionFar('/{parts*}')
-      server.route({
+    server.subscriptionFar('/{parts*}')
+    server.route({
+      path: '/publish',
+      method: 'POST',
+      handler: (req) => {
+        const topic = req.payload.topic
+        const body = req.payload.body
+        server.publishFar(topic, body)
+
+        return { topic, body }
+      }
+    })
+
+    await server.start()
+  })
+
+  afterEach(async () => {
+    await server.stop()
+  })
+
+  test('a + wildcard work', async () => {
+    let done
+    let error
+
+    const client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
+
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
+    })
+
+    await client.subscribe('/+', (message) => {
+      expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
+      client.disconnect().then(done).catch(error)
+    })
+
+    await Promise.all([
+      client.request({
         path: '/publish',
         method: 'POST',
-        handler: (req, reply) => {
-          const topic = req.payload.topic
-          const body = req.payload.body
-          server.publishFar(topic, body)
-          reply()
-        }
-      })
-
-      server.start(done)
-    })
+        payload: { topic: 'hello', body: { hello: 'world' } }
+      }),
+      waitForHandler
+    ])
   })
 
-  afterEach((done) => {
-    server.stop(done)
-    server = null
-  })
+  test('a # wildcard work', async () => {
+    let done
+    let error
 
-  test('a + wildcard work', (done) => {
     const client = new Nes.Client('ws://localhost:4000')
+    await client.connect()
 
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
-
-      client.subscribe('/+', (message) => {
-        expect(message).to.equal({ topic: 'hello', body: { hello: 'world' } })
-        setTimeout(() => {
-          client.disconnect()
-          done()
-        }, 100)
-      }, (err) => {
-        if (err) {
-          return done(err)
-        }
-
-        client.request({
-          path: '/publish',
-          method: 'POST',
-          payload: { topic: 'hello', body: { hello: 'world' } }
-        }, (err) => {
-          if (err) {
-            return done(err)
-          }
-        })
-      })
+    const waitForHandler = new Promise((resolve, reject) => {
+      done = resolve
+      error = reject
     })
-  })
 
-  test('a # wildcard work', (done) => {
-    const client = new Nes.Client('ws://localhost:4000')
-
-    client.connect((err) => {
-      if (err) {
-        return done(err)
-      }
-
-      client.subscribe('/#', (message) => {
-        expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
-        setTimeout(() => {
-          client.disconnect()
-          done()
-        }, 100)
-      }, (err) => {
-        if (err) {
-          return done(err)
-        }
-
-        client.request({
-          path: '/publish',
-          method: 'POST',
-          payload: { topic: 'hello/new/world', body: { hello: 'world' } }
-        }, (err) => {
-          if (err) {
-            return done(err)
-          }
-        })
-      })
+    await client.subscribe('/#', (message) => {
+      expect(message).to.equal({ topic: 'hello/new/world', body: { hello: 'world' } })
+      client.disconnect().then(done).catch(error)
     })
+
+    await Promise.all([
+      client.request({
+        path: '/publish',
+        method: 'POST',
+        payload: { topic: 'hello/new/world', body: { hello: 'world' } }
+      }),
+      waitForHandler
+    ])
   })
 })

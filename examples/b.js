@@ -1,16 +1,14 @@
 'use strict'
 
 const Hapi = require('hapi')
+const routes = require('./routes')
 
-const server = new Hapi.Server()
-server.connection({ port: 3001 })
+async function init () {
+  const server = new Hapi.Server({ port: 3001 })
 
-require('./routes')(server)
+  await routes(server)
+  await server.start()
+  console.log('[b] server started')
+}
 
-server.start((err) => {
-  if (err) {
-    console.error(err.message)
-    process.exit(1)
-  }
-  console.log('server started', server.info.uri)
-})
+init()

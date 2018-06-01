@@ -60,3 +60,4 @@ MIT
 [mqemitter]: https://github.com/mcollina/mqmitter
 [mqredis]: https://github.com/mcollina/mqemitter-redis
 [mqmongo]: https://github.com/mcollina/mqemitter-mongodb
+

@@ -21,7 +21,7 @@ function getServer (port) {
   return server
 }
 
-async function start (server, opts) {
+async function start (server, opts, subOpts) {
   opts = opts || {}
 
   const plugin = {
@@ -34,7 +34,7 @@ async function start (server, opts) {
 
   await server.register([Nes, plugin])
 
-  server.subscriptionFar('/echo')
+  server.subscriptionFar('/echo', subOpts)
   server.route({
     path: '/echo',
     method: 'POST',
@@ -175,6 +175,25 @@ experiment('nes work as normal', async () => {
 
   beforeEach(async () => {
     server = await start(getServer())
+  })
+
+  afterEach(async () => {
+    await server.stop()
+    server = null
+  })
+
+  pubSubTest()
+})
+
+experiment('with subscription filter', async () => {
+  let server
+
+  beforeEach(async () => {
+    server = await start(getServer(), null, {
+      filter: function (path, message, options) {
+        return true
+      }
+    })
   })
 
   afterEach(async () => {

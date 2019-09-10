@@ -7,8 +7,16 @@ const mongodb = require('mqemitter-mongodb')
 
 const kDeliver = Symbol.for('deliver')
 
-function buildDeliver (socket, topic) {
+function buildDeliver (socket, topic, filterOpts) {
   return async function deliver (message, done) {
+    const filterArgs = {
+      socket,
+      credentials: socket.auth.credentials,
+      params: filterOpts.params
+    }
+
+    if (await filterOpts.filter('/' + topic, topic === message.topic ? message.body : message, filterArgs) === false) return
+
     if (topic === message.topic) {
       await socket.publish('/' + topic, message.body)
     } else {
@@ -50,6 +58,7 @@ async function register (server, options) {
 
     const wrapSubscribe = options.onSubscribe || (async (socket, path, params) => null)
     const wrapUnsubscribe = options.onUnsubscribe || (async (socket, path, params) => null)
+    const filter = options.filter || (async (path, message, options) => true)
 
     options.onSubscribe = async (socket, path, params) => {
       const deliverMap = socket[kDeliver] || {}
@@ -58,7 +67,7 @@ async function register (server, options) {
       const topic = path.replace(/^\//, '')
 
       if (!deliverMap[path]) {
-        deliverMap[path] = buildDeliver(socket, topic)
+        deliverMap[path] = buildDeliver(socket, topic, {filter, params})
       }
 
       await wrapSubscribe(socket, path, params)

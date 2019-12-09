@@ -10,9 +10,9 @@ const kDeliver = Symbol.for('deliver')
 function buildDeliver (socket, topic) {
   return async function deliver (message, done) {
     if (topic === message.topic) {
-      await socket.publish('/' + topic, message.body)
+      await socket.publish('/' + topic, message.body).catch(() => {})
     } else {
-      await socket.publish('/' + topic, message)
+      await socket.publish('/' + topic, message).catch(() => {})
     }
   }
 }

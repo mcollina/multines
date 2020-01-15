@@ -42,7 +42,7 @@ function getMq (options) {
 }
 
 async function register (server, options) {
-  server.dependency('nes')
+  server.dependency('@hapi/nes')
   const mq = getMq(options)
 
   server.decorate('server', 'subscriptionFar', (path, options) => {

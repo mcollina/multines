@@ -1,6 +1,6 @@
 'use strict'
 
-const Nes = require('nes')
+const Nes = require('@hapi/nes')
 
 async function sub () {
   const client = new Nes.Client('ws://localhost:3000')

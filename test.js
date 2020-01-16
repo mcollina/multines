@@ -1,10 +1,10 @@
 'use strict'
 
 const mqemitter = require('mqemitter')
-const Code = require('code')
-const Lab = require('lab')
-const Hapi = require('hapi')
-const Nes = require('nes')
+const Code = require('@hapi/code')
+const Lab = require('@hapi/lab')
+const Hapi = require('@hapi/hapi')
+const Nes = require('@hapi/nes')
 const Multines = require('.')
 
 const lab = exports.lab = Lab.script()

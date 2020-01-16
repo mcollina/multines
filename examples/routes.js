@@ -1,6 +1,6 @@
 'use strict'
 
-const Nes = require('nes')
+const Nes = require('@hapi/nes')
 const Multines = require('..')
 
 module.exports = async (server) => {

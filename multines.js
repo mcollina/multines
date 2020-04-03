@@ -67,7 +67,7 @@ async function register (server, options) {
       const topic = path.replace(/^\//, '')
 
       if (!deliverMap[path]) {
-        deliverMap[path] = buildDeliver(socket, topic, {filter, params})
+        deliverMap[path] = buildDeliver(socket, topic, { filter, params })
       }
 
       await wrapSubscribe(socket, path, params)
